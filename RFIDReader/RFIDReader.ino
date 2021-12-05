@@ -7,6 +7,11 @@
  * THe pc needs to be able to tell the arduino that it got 
  * the correct tag and then turn on a green led. Turn on a red LED if it didnt work. 
  * 
+ * Reading a packet doesnt work
+ * LEDs dont work
+ * CHecksum doesnt work
+ * 
+ * 
  * 
  * --------------------------------------------------------------------------------------------------------------------
  * Example sketch/program showing how to read data from a PICC to serial.
@@ -52,17 +57,26 @@
 
 MFRC522 mfrc522(SS_PIN, RST_PIN);  // Create MFRC522 instance
 
+String printbuffer;
+int packetnumber;
+
 void setup() {
-	Serial.begin(9600);		// Initialize serial communications with the PC
+	//Serial.begin(9600);		// Initialize serial communications with the PC
 	while (!Serial);		// Do nothing if no serial port is opened (added for Arduinos based on ATMEGA32U4)
 	SPI.begin();			// Init SPI bus
 	mfrc522.PCD_Init();		// Init MFRC522
 	delay(4);				// Optional delay. Some board do need more time after init to be ready, see Readme
-	mfrc522.PCD_DumpVersionToSerial();	// Show details of PCD - MFRC522 Card Reader details
-	Serial.println(F("Scan PICC to see UID, SAK, type, and data blocks..."));
+	//mfrc522.PCD_DumpVersionToSerial();	// Show details of PCD - MFRC522 Card Reader details
+	//Serial.println(F("Scan PICC to see UID, SAK, type, and data blocks..."));
 }
 
 void loop() {
+
+  
+  
+  //Reset the printbuffer
+  printbuffer ="";
+  
 	// Reset the loop if no new card present on the sensor/reader. This saves the entire process when idle.
 	if ( ! mfrc522.PICC_IsNewCardPresent()) {
 		return;
@@ -78,5 +92,78 @@ void loop() {
     //mfrc522.PICC_DumpDetailsToSerial(&(mfrc522.uid));
     
 // This is my version of mfrc522.PICC_DumpDetailsToSerial to get just the UID of the card    
-    mfrc522.PICC_DumpUIDToSerial(&(mfrc522.uid));
+    //mfrc522.PICC_DumpUIDToSerial(&(mfrc522.uid));
+
+
+//Start getting the packet ready to send
+    packetnumber ++;
+    if (packetnumber > 999)
+    {
+      packetnumber = 1;
+    }
+    
+    printbuffer += "####";
+    
+    //Calculate the packet number and put it in the string
+    printbuffer += packetnumbercalc(packetnumber);
+    
+    //get the UID of the tag as a string
+    String uidoftag = mfrc522.PICC_DumpUIDToString(&(mfrc522.uid));
+    printbuffer += uidoftag;
+    
+    //printbuffer += mfrc522.PICC_DumpUIDToString(&(mfrc522.uid));
+
+    //Calcualte the checksum and put it in the string
+    printbuffer += calcualtechecksum(uidoftag);
+
+    
+    //Print out the buffer as a string to serial
+    Serial.println(printbuffer);
+}
+
+
+String packetnumbercalc(int packetnumber)
+{
+  String returnpacketnum;
+  if (packetnumber < 10)
+    {
+      returnpacketnum = "00";
+      returnpacketnum += packetnumber;
+    }
+
+  if (packetnumber >= 10 && packetnumber < 100)
+    {
+      returnpacketnum = "0";
+      returnpacketnum += packetnumber;
+    }
+  if (packetnumber >= 100)
+  {
+    returnpacketnum = packetnumber;
+  }
+    return returnpacketnum; 
+}
+
+
+
+String calcualtechecksum(String uidString)
+{
+  int x;
+  String checksum;
+
+
+  for (int i = 0; i < 9; i++)
+  {
+    x += int(uidString[i]); 
+  }
+
+  x = x % 1000;
+
+  checksum = String(x);
+
+
+  checksum = "UUUU";
+  
+
+  
+  return checksum;
 }
